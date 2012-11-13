@@ -1,9 +1,16 @@
 TODO:
 
+- syntax
+    - the syntax should support (even though it would be ignored) ;
+    - the syntax should support FROM
+
+- LIKE support
+
 - functions
     - the Function item in queryparse.y is icky, only allowing
         0,1,2,3-ary functions. Should allow n-ary functions.
         - this requires more complex data structures to achieve
+    - aggregation functions
 
 - types
     - lots of mixing of num vs long vs integer, dbl vs float vs double
@@ -13,4 +20,16 @@ TODO:
 - support for date/time type
 
 - unit tests
+
+- support headers/header files
+
+- support column indexing 
+    - requires typing
+    - save a sorted (len)key:value store of (char[64])hashed_column:(unsigned int)seekval
+        - hashed_column is an md5 hash of the column value
+        - seekval is the index of the start of the row in reference
+    - contains a header of rowcount 
+
+- support joins
+    - indexed joins forced on any CSV larger than 100 lines.
 

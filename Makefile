@@ -1,4 +1,4 @@
-CFLAGS=-pedantic -std=c1x -O3 -D_GNU_SOURCE
+CFLAGS=-pedantic -std=gnu99 -O3 -D_GNU_SOURCE
 YFLAGS=-t -v
 LFLAGS=-d
 

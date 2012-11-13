@@ -27,14 +27,14 @@ extern functionspec FUNCTIONS[];
 void val_free(val* val)
 {
     if (val->is_str) {
-        free(val->str);
+        free((val->un).str);
     }
 }
 
 void selector_free(selector* s)
 {
     if (s->type == SELECTOR_VALUE) {
-        val_free(&s->value);
+        val_free(&s->un1.value);
     }
 }
 
@@ -96,24 +96,24 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
     memset(&ret, 0, sizeof(struct _val));
 
     if (val->is_num) {
-        ret.num = val->num;
+        ret.un.num = val->un.num;
         ret.is_num = true;
         ret.conversion_type = TYPE_LONG;
     }
     else if (val->is_dbl) {
-        ret.dbl = val->dbl;
+        ret.un.dbl = val->un.dbl;
         ret.is_dbl = true;
         ret.conversion_type = TYPE_DOUBLE;
     }
     else if (val->is_str) {
-        size_t n = strlen(val->str) + 1;
-        ret.str = (char*)malloc(n);
-        strncpy(ret.str, val->str, n);
+        size_t n = strlen(val->un.str) + 1;
+        ret.un.str = (char*)malloc(n);
+        strncpy(ret.un.str, val->un.str, n);
         ret.is_str = true;
         ret.conversion_type = TYPE_STRING;
     }
     else if (val->is_col) {
-        size_t colnum = val->col;
+        size_t colnum = val->un.col;
 
         if (colnum >= fields->size / sizeof(void*)) {
             //
@@ -121,25 +121,25 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
             // This is defined as empty string.
             //
 
-            ret.str = strdup("");
+            ret.un.str = strdup("");
         }
         else {
             growbuf* field = ((growbuf**)fields->buf)[colnum];
-            ret.str = strdup(field->buf);
+            ret.un.str = strdup(field->buf);
         }
 
         ret.is_str = true;
         ret.conversion_type = TYPE_STRING;
     }
     else if (val->is_special) {
-        switch (val->special) {
+        switch (val->un.special) {
         case SPECIAL_NUMCOLS:
-            ret.num = fields->size / sizeof(void*);
+            ret.un.num = fields->size / sizeof(void*);
             ret.is_num = true;
             ret.conversion_type = TYPE_LONG;
             break;
         case SPECIAL_ROWNUM:
-            ret.num = rownum;
+            ret.un.num = rownum;
             ret.is_num = true;
             ret.conversion_type = TYPE_LONG;
             break;
@@ -147,16 +147,16 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
     }
     else if (val->is_func) {
         struct _val args[MAX_ARGS];
-        for (size_t i = 0; i < val->func->num_args; i++) {
-            args[i] = value_evaluate(&(val->func->args[i]), fields, rownum);
+        for (size_t i = 0; i < val->un.func->num_args; i++) {
+            args[i] = value_evaluate(&(val->un.func->args[i]), fields, rownum);
         }
 
-        switch (val->func->func) {
+        switch (val->un.func->func) {
         case FUNC_SUBSTR:
             {
-                ssize_t start  = args[1].num;
-                ssize_t len    = args[2].num;
-                size_t  in_len = strlen(args[0].str);
+                ssize_t start  = args[1].un.num;
+                ssize_t len    = args[2].un.num;
+                size_t  in_len = strlen(args[0].un.str);
 
                 if (start < 0) {
                     if (-1*start >= in_len) {
@@ -171,7 +171,7 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
                     len = 0;
                 }
 
-                if (val->func->num_args == 2) {
+                if (val->un.func->num_args == 2) {
                     len = -1;
                 }
 
@@ -193,12 +193,12 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
                 char* result = (char*)malloc(len + 1);
                 
                 if (len > 0) {
-                    memcpy(result, args[0].str + start, len);
+                    memcpy(result, args[0].un.str + start, len);
                 }
 
                 result[len] = '\0';
 
-                ret.str = result;
+                ret.un.str = result;
                 ret.is_str = true;
                 ret.conversion_type = TYPE_STRING;
             }
@@ -206,7 +206,7 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
 
         case FUNC_STRLEN:
             {
-                ret.num = strlen(args[0].str);
+                ret.un.num = strlen(args[0].un.str);
                 ret.is_num = true;
                 ret.conversion_type = TYPE_LONG;
             }
@@ -219,24 +219,24 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
                 double arg1 = 0.0;
 
                 if (args[0].is_dbl) {
-                    arg0 = args[0].dbl;
+                    arg0 = args[0].un.dbl;
                 }
                 else if (args[0].is_num) {
-                    arg0 = (double)(args[0].num);
+                    arg0 = (double)(args[0].un.num);
                 }
 
                 if (args[1].is_dbl) {
-                    arg1 = args[1].dbl;
+                    arg1 = args[1].un.dbl;
                 }
                 else if (args[1].is_num) {
-                    arg1 = (double)(args[1].num);
+                    arg1 = (double)(args[1].un.num);
                 }
 
-                if (val->func->func == FUNC_MAX) {
-                    ret.dbl = (arg0 > arg1) ? arg0 : arg1;
+                if (val->un.func->func == FUNC_MAX) {
+                    ret.un.dbl = (arg0 > arg1) ? arg0 : arg1;
                 }
                 else {
-                    ret.dbl = (arg0 < arg1) ? arg0 : arg1;
+                    ret.un.dbl = (arg0 < arg1) ? arg0 : arg1;
                 }
 
                 ret.is_dbl = true;
@@ -249,13 +249,13 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
                 double arg0 = 0.0;
 
                 if (args[0].is_dbl) {
-                    arg0 = args[0].dbl;
+                    arg0 = args[0].un.dbl;
                 }
                 else if (args[0].is_num) {
-                    arg0 = (double)args[0].num;
+                    arg0 = (double)args[0].un.num;
                 }
 
-                ret.dbl = fabs(arg0);
+                ret.un.dbl = fabs(arg0);
                 ret.is_dbl = true;
                 ret.conversion_type = TYPE_DOUBLE;
             }
@@ -264,20 +264,20 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
         case FUNC_LOWER:
         case FUNC_UPPER:
             {
-                size_t len = strlen(args[0].str);
-                ret.str = (char*)malloc(len + 1);
+                size_t len = strlen(args[0].un.str);
+                ret.un.str = (char*)malloc(len + 1);
 
                 for (size_t i = 0; i <= len; i++) {
-                    if (val->func->func == FUNC_LOWER
-                            && args[0].str[i] >= 'A' && args[0].str[i] <= 'Z') {
-                        ret.str[i] = args[0].str[i] + ('a' - 'A');
+                    if (val->un.func->func == FUNC_LOWER
+                            && args[0].un.str[i] >= 'A' && args[0].un.str[i] <= 'Z') {
+                        ret.un.str[i] = args[0].un.str[i] + ('a' - 'A');
                     }
-                    else if (val->func->func == FUNC_UPPER
-                            && args[0].str[i] >= 'a' && args[0].str[i] <= 'z') {
-                        ret.str[i] = args[0].str[i] - ('a' - 'A');
+                    else if (val->un.func->func == FUNC_UPPER
+                            && args[0].un.str[i] >= 'a' && args[0].un.str[i] <= 'z') {
+                        ret.un.str[i] = args[0].un.str[i] - ('a' - 'A');
                     }
                     else {
-                        ret.str[i] = args[0].str[i];
+                        ret.un.str[i] = args[0].un.str[i];
                     }
                 }
 
@@ -288,28 +288,28 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
 
         case FUNC_TRIM:
             {
-                size_t len = strlen(args[0].str);
+                size_t len = strlen(args[0].un.str);
                 size_t start, end;
 
                 #define IS_WHITESPACE(c) \
                     ((c) == ' ' || (c) == '\t' || (c) == '\n' || (c) == '\r')
                 
                 for (start = 0; start < len; start++) {
-                    if (!IS_WHITESPACE(args[0].str[start])) {
+                    if (!IS_WHITESPACE(args[0].un.str[start])) {
                         break;
                     }
                 }
 
                 for (end = len - 1; end > start; end--) {
-                    if (!IS_WHITESPACE(args[0].str[end])) {
+                    if (!IS_WHITESPACE(args[0].un.str[end])) {
                         break;
                     }
                 }
 
                 len = end - start + 1;
-                ret.str = (char*)malloc(len + 1);
-                memcpy(ret.str, args[0].str + start, len);
-                ret.str[len] = '\0';
+                ret.un.str = (char*)malloc(len + 1);
+                memcpy(ret.un.str, args[0].un.str + start, len);
+                ret.un.str[len] = '\0';
 
                 ret.is_str = true;
                 ret.conversion_type = TYPE_STRING;
@@ -318,10 +318,10 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
 
         default:
             fprintf(stderr, "ERROR: no implementation for function %s\n",
-                    FUNCTIONS[val->func->func].name);
+                    FUNCTIONS[val->un.func->func].name);
         }
 
-        for (size_t i = 0; i < val->func->num_args; i++) {
+        for (size_t i = 0; i < val->un.func->num_args; i++) {
             val_free(&args[i]);
         }
     }
@@ -333,37 +333,37 @@ val value_evaluate(const val* val, growbuf* fields, size_t rownum)
 
     if (val->conversion_type == TYPE_LONG) {
         if (ret.is_str) {
-            char* str = ret.str;
-            ret.num = csvsel_atol(str);
+            char* str = ret.un.str;
+            ret.un.num = csvsel_atol(str);
             ret.is_str = false;
             free(str);
         }
         else if (ret.is_dbl) {
-            ret.num = (long)ret.dbl;
+            ret.un.num = (long)ret.un.dbl;
             ret.is_dbl = false;
         }
         ret.is_num = true;
     }
     else if (val->conversion_type == TYPE_DOUBLE) {
         if (ret.is_str) {
-            char* str = ret.str;
-            ret.dbl = csvsel_strtod(str, NULL);
+            char* str = ret.un.str;
+            ret.un.dbl = csvsel_strtod(str, NULL);
             ret.is_str = false;
             free(str);
         }
         else if (ret.is_num) {
-            ret.dbl = (double)ret.num;
+            ret.un.dbl = (double)ret.un.num;
             ret.is_num = false;
         }
         ret.is_dbl = true;
     }
     else if (val->conversion_type == TYPE_STRING) {
         if (ret.is_num) {
-            asprintf(&(ret.str), "%ld", ret.num);
+            asprintf(&(ret.un.str), "%ld", ret.un.num);
             ret.is_num = false;
         }
         else if (ret.is_dbl) {
-            asprintf(&(ret.str), "%lf", val->dbl);
+            asprintf(&(ret.un.str), "%lf", val->un.dbl);
             ret.is_dbl = false;
         }
         ret.is_str = true;
@@ -395,23 +395,23 @@ bool query_evaluate(growbuf* fields, size_t rownum, compound* condition)
                 //
 
                 if (left.is_num) {
-                    asprintf(&(left.str), "%ld", left.num);
+                    asprintf(&(left.un.str), "%ld", left.un.num);
                 }
                 else if (left.is_dbl) {
-                    asprintf(&(left.str), "%lf", left.dbl);
+                    asprintf(&(left.un.str), "%lf", left.un.dbl);
                 }
 
                 if (right.is_num) {
-                    asprintf(&(right.str), "%ld", right.num);
+                    asprintf(&(right.un.str), "%ld", right.un.num);
                 }
                 else if (right.is_dbl) {
-                    asprintf(&(right.str), "%lf", right.dbl);
+                    asprintf(&(right.un.str), "%lf", right.un.dbl);
                 }
 
-                retval = (NULL != strstr(left.str, right.str));
+                retval = (NULL != strstr(left.un.str, right.un.str));
 
-                free(left.str);
-                free(right.str);
+                free(left.un.str);
+                free(right.un.str);
 
                 goto cleanup;
             }
@@ -432,32 +432,32 @@ bool query_evaluate(growbuf* fields, size_t rownum, compound* condition)
 #define CONVERSION(a, b) \
             if (b.is_dbl) { \
                 if (a.is_str) { \
-                    char* temp = a.str; \
-                    a.dbl = csvsel_strtod(temp, NULL); \
+                    char* temp = a.un.str; \
+                    a.un.dbl = csvsel_strtod(temp, NULL); \
                     a.is_dbl = true; \
                     a.is_str = false; \
                     free(temp); \
                 } \
                 else if (a.is_num) { \
-                    a.dbl = (double)a.num; \
+                    a.un.dbl = (double)a.un.num; \
                     a.is_dbl = true; \
                     a.is_num = false; \
                 } \
             } \
             else if (b.is_num && a.is_str) { \
-                if (strchr(a.str, '.') != NULL) { \
-                    char* temp = a.str; \
-                    a.dbl = csvsel_strtod(temp, NULL); \
+                if (strchr(a.un.str, '.') != NULL) { \
+                    char* temp = a.un.str; \
+                    a.un.dbl = csvsel_strtod(temp, NULL); \
                     a.is_dbl = true; \
                     a.is_str = false; \
                     free(temp); \
-                    b.dbl = (double)b.num; \
+                    b.un.dbl = (double)b.un.num; \
                     b.is_dbl = true; \
                     b.is_num = false; \
                 } \
                 else { \
-                    char* temp = a.str; \
-                    a.num = csvsel_atol(temp); \
+                    char* temp = a.un.str; \
+                    a.un.num = csvsel_atol(temp); \
                     a.is_num = true; \
                     a.is_str = false; \
                     free(temp); \
@@ -473,15 +473,15 @@ bool query_evaluate(growbuf* fields, size_t rownum, compound* condition)
 
 #define COMPARE(operator) \
             if (left.is_dbl) { \
-                retval = (left.dbl operator right.dbl); \
+                retval = (left.un.dbl operator right.un.dbl); \
             } else if (left.is_num) { \
-                retval = (left.num operator right.num); \
+                retval = (left.un.num operator right.un.num); \
             } \
             else { \
-                retval = (strcmp(left.str, right.str) operator 0); \
+                retval = (strcmp(left.un.str, right.un.str) operator 0); \
                 /* these strings are intermediate results, so free them */ \
-                free(left.str); \
-                free(right.str); \
+                free(left.un.str); \
+                free(right.un.str); \
             } \
 
             switch (condition->simple.oper) {

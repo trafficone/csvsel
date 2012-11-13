@@ -10,20 +10,20 @@ extern functionspec FUNCTIONS[];
 void print_val(val r)
 {
     if (r.is_col) {
-        printf("column: %zu", r.col);
+        printf("column: %zu", r.un.col);
     }
     else if (r.is_num) {
-        printf("int: %ld", r.num);
+        printf("int: %ld", r.un.num);
     }
     else if (r.is_dbl) {
-        printf("float: %lf", r.dbl);
+        printf("float: %lf", r.un.dbl);
     }
     else if (r.is_str) {
-        printf("str: %s", r.str);
+        printf("str: %s", r.un.str);
     }
     else if (r.is_special) {
         printf("special: ");
-        switch (r.special) {
+        switch (r.un.special) {
         case SPECIAL_NUMCOLS:
             printf("<number of columns>");
             break;
@@ -37,20 +37,20 @@ void print_val(val r)
     }
     else if (r.is_func) {
         printf("function: ");
-        if (r.func == NULL) {
+        if (r.un.func == NULL) {
             printf("NULL");
         }
         else {
-            if (r.func->func >= MAX_FUNC) {
+            if (r.un.func->func >= MAX_FUNC) {
                 printf("<unknown function!!>");
             }
             else {
-                printf("%s", FUNCTIONS[r.func->func].name);
+                printf("%s", FUNCTIONS[r.un.func->func].name);
             }
             printf("(");
-            for (size_t i = 0; i < r.func->num_args; i++) {
-                print_val(r.func->args[i]);
-                if (i+1 != r.func->num_args) {
+            for (size_t i = 0; i < r.un.func->num_args; i++) {
+                print_val(r.un.func->args[i]);
+                if (i+1 != r.un.func->num_args) {
                     printf(", ");
                 }
             }
@@ -146,15 +146,15 @@ void print_selector(selector* s)
 {
     switch (s->type) {
     case SELECTOR_COLUMN:
-        if (s->column == -1)
+        if (s->un1.column == -1)
             printf("all columns\n");
         else
-            printf("column %zu\n", s->column);
+            printf("column %zu\n", s->un1.column);
         break;
 
     case SELECTOR_VALUE:
         printf("value ");
-        print_val(s->value);
+        print_val(s->un1.value);
         printf("\n");
         break;
 

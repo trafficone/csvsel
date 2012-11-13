@@ -28,15 +28,17 @@ typedef enum {
 
 struct _func;
 
-typedef struct _val {
-    union {
+typedef union una {
         long          num;
         double        dbl;
         char*         str;
         size_t        col;
         special_value special;
         struct _func* func;
-    };
+    } una;
+
+typedef struct _val {
+    una un;
     bool is_num;
     bool is_dbl;
     bool is_str;
@@ -67,12 +69,12 @@ typedef struct _compound {
         OPER_AND, OPER_OR, OPER_NOT, OPER_SIMPLE
     } oper;
 } compound;
-
-typedef struct _selector {
-    union {
+typedef union unb{
         size_t column;
         val value;
-    };
+    } unb;
+typedef struct _selector {
+    unb un1;
     enum {
         SELECTOR_COLUMN, SELECTOR_VALUE
     } type;

@@ -82,11 +82,11 @@ compound* new_compound()
 void free_compound(compound* c)
 {
     if (NULL != c) {
-        if (c->simple.right.is_str && NULL != c->simple.right.str) {
-            free(c->simple.right.str);
+        if (c->simple.right.is_str && NULL != c->simple.right.un.str) {
+            free(c->simple.right.un.str);
         }
-        if (c->simple.left.is_str && NULL != c->simple.left.str) {
-            free(c->simple.left.str);
+        if (c->simple.left.is_str && NULL != c->simple.left.un.str) {
+            free(c->simple.left.un.str);
         }
         compound* l = c->left;
         compound* r = c->right;
@@ -184,7 +184,7 @@ bool column_selected(growbuf* selectors, size_t column)
     for (size_t i = 0; i < selectors->size / sizeof(void*); i++) {
         selector* s = ((selector**)(selectors->buf))[i];
         if (s->type == SELECTOR_COLUMN
-                && s->column == column) {
+                && s->un1.column == column) {
             return true;
         }
     }
@@ -245,7 +245,7 @@ Selector
     | Value {
         selector* s = (selector*)malloc(sizeof(selector));
         s->type = SELECTOR_VALUE;
-        s->value = $1;
+        s->un1.value = $1;
         growbuf_append(SELECTORS, &s, sizeof(void*));
     }
 ;
@@ -256,7 +256,7 @@ Columnspec
             if (!column_selected(SELECTORS, i)) {
                 selector* s = (selector*)malloc(sizeof(selector));
                 s->type = SELECTOR_COLUMN;
-                s->column = i;
+                s->un1.column = i;
                 growbuf_append(SELECTORS, &s, sizeof(void*));
             }
         }
@@ -265,7 +265,7 @@ Columnspec
         if (!column_selected(SELECTORS, $1)) {
             selector* s = (selector*)malloc(sizeof(selector));
             s->type = SELECTOR_COLUMN;
-            s->column = $1;
+            s->un1.column = $1;
             growbuf_append(SELECTORS, &s, sizeof(void*));
         }
     }
@@ -279,7 +279,7 @@ NoColumns
 
         selector* s = (selector*)malloc(sizeof(selector));
         s->type = SELECTOR_COLUMN;
-        s->column = SIZE_MAX;
+        s->un1.column = SIZE_MAX;
         growbuf_append(SELECTORS, &s, sizeof(void*));
     }
 ;
@@ -442,41 +442,41 @@ Value
 Value_Base
     : TOK_COLUMN {
         value_clear(&$$);
-        $$.col = $1;
+        $$.un.col = $1;
         $$.is_col = true;
         $$.conversion_type = TYPE_STRING;
     }
     | TOK_STRING {
         value_clear(&$$);
-        $$.str = $1;
+        $$.un.str = $1;
         $$.is_str = true;
         $$.conversion_type = TYPE_STRING;
     }
     | TOK_INTEGER {  
         value_clear(&$$);
-        $$.num = $1;
+        $$.un.num = $1;
         $$.is_num = true;
         $$.conversion_type = TYPE_LONG;
     }
     | TOK_FLOAT {
         value_clear(&$$);
-        $$.dbl = $1;
+        $$.un.dbl = $1;
         $$.is_dbl = true;
         $$.conversion_type = TYPE_DOUBLE;
     }
     | TOK_SPECIAL {
         value_clear(&$$);
-        $$.special = $1;
+        $$.un.special = $1;
         $$.is_special = true;
         $$.conversion_type = TYPE_LONG;
     }
     | Function {
         value_clear(&$$);
-        $$.func = (func*)malloc(sizeof(func));
-        memcpy($$.func, &$1, sizeof(func));
+        $$.un.func = (func*)malloc(sizeof(func));
+        memcpy($$.un.func, &$1, sizeof(func));
         $$.is_func = true;
 
-        $$.conversion_type = FUNCTIONS[$$.func->func].return_type;
+        $$.conversion_type = FUNCTIONS[$$.un.func->func].return_type;
     }
 ;
 
