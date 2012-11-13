@@ -18,6 +18,7 @@
 #include "queryparse.h"
 
 static growbuf* SELECTORS;
+static growbuf* FROMS;
 static compound** ROOT_CONDITION;
 
 extern int   query_debug;
@@ -30,11 +31,12 @@ static void query_error();
 
 extern functionspec FUNCTIONS[];
 
-int queryparse(const char* query, size_t query_length, growbuf* selectors, compound** root_condition)
+int queryparse(const char* query, size_t query_length, growbuf* selectors, compound** root_condition, growbuf* froms)
 {
     int fd[2];
 
     SELECTORS = selectors;
+    FROMS = froms;
     ROOT_CONDITION = root_condition;
 
     //
@@ -192,6 +194,16 @@ bool column_selected(growbuf* selectors, size_t column)
     return false;
 }
 
+bool in_froms(growbuf* froms, size_t from){
+    for (size_t i = 0; i < froms->size / sizeof(void*); i++){
+        fromval* f = ((fromval**)(froms->buf))[i];
+        if(f->from == from){
+           return true;
+        } 
+    } 
+    return false;
+}
+
 %}
 
 %union {
@@ -207,7 +219,7 @@ bool column_selected(growbuf* selectors, size_t column)
     condition     simple;
 }
 
-%token TOK_SELECT TOK_WHERE TOK_CONTAINS TOK_EQ TOK_NEQ TOK_GT TOK_LT TOK_GTE TOK_LTE TOK_AND TOK_OR TOK_NOT TOK_LPAREN TOK_RPAREN TOK_COMMA TOK_DASH TOK_CONV_NUM TOK_CONV_DBL TOK_CONV_STR TOK_ERROR
+%token TOK_SELECT TOK_WHERE TOK_CONTAINS TOK_EQ TOK_NEQ TOK_GT TOK_LT TOK_GTE TOK_LTE TOK_AND TOK_OR TOK_NOT TOK_LPAREN TOK_RPAREN TOK_COMMA TOK_DASH TOK_CONV_NUM TOK_CONV_DBL TOK_CONV_STR TOK_ERROR TOK_END TOK_FROM
 
 %token <num> TOK_INTEGER
 %token <dbl> TOK_FLOAT
@@ -230,8 +242,38 @@ bool column_selected(growbuf* selectors, size_t column)
 %%
 
 Start
-    : TOK_SELECT Selectors TOK_WHERE Conditions
+    : TOK_SELECT Selectors TOK_FROM From TOK_WHERE Conditions TOK_END
+    | TOK_SELECT Selectors TOK_WHERE Conditions TOK_END
+    | TOK_SELECT Selectors TOK_FROM From TOK_WHERE Conditions 
+    | TOK_SELECT Selectors TOK_WHERE Conditions 
+    | TOK_SELECT Selectors TOK_FROM From TOK_END
+    | TOK_SELECT Selectors TOK_END
+    | TOK_SELECT Selectors TOK_FROM From 
     | TOK_SELECT Selectors
+;
+
+From
+    : From TOK_COMMA Fromval
+    | Fromval
+;
+
+Fromval
+    : TOK_IDENTIFIER TOK_IDENTIFIER {
+      if(!in_from(FROMS,$1){
+        fromval* f = (fromval*)malloc(sizeof(fromval));
+        f->alias = $2;
+        f->from  = $1;
+        growbuf_append(FROMS,&f,sizeof(void*));
+      }
+    }
+    | TOK_IDENTIFIER {
+      if(!in_from(FROMS,$1){
+        fromval* f = (fromval*)malloc(sizeof(fromval));
+        f->alias = $1;
+        f->from  = $1;
+        growbuf_append(FROMS,&f,sizeof(void*));
+      }
+    }
 ;
 
 Selectors

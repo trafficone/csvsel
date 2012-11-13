@@ -29,9 +29,11 @@ IDENTIFIER      [a-zA-Z_][a-zA-Z0-9_-]+
 
 {WHITESPACE}    { /* do nothing */ }
 
+";"             { return TOK_END; }
 "select"        { return TOK_SELECT; }
 "where"         { return TOK_WHERE; }
 "contains"      { return TOK_CONTAINS; }
+"from"          { return TOK_FROM; }
 "="             { return TOK_EQ; }
 "!="            { return TOK_NEQ; }
 ">"             { return TOK_GT; }

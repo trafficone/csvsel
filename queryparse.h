@@ -28,6 +28,11 @@ typedef enum {
 
 struct _func;
 
+typedef struct _fromval {
+  char* alias;
+  char* from;
+}fromval;
+
 typedef union una {
         long          num;
         double        dbl;
@@ -80,7 +85,7 @@ typedef struct _selector {
     } type;
 } selector;
 
-int queryparse(const char* query, size_t query_length, growbuf* selected_columns, compound** root_condition);
+int queryparse(const char* query, size_t query_length, growbuf* selected_columns, compound** root_condition, growbuf* froms);
 
 void free_compound(compound* c);
 

@@ -33,7 +33,7 @@ void eval_and_print(growbuf* fields, size_t rownum, row_evaluator_args* args)
             selector* c = ((selector**)(args->selectors->buf))[i];
             switch (c->type) {
             case SELECTOR_COLUMN:
-                if (c->column == SIZE_MAX) {
+                if (c->un1.column == SIZE_MAX) {
                     for (size_t j = 0; j < fields->size / sizeof(void*); j++) {
                         growbuf* field = ((growbuf**)(fields->buf))[j];
                         print_csv_field((char*)field->buf, output);
@@ -42,7 +42,7 @@ void eval_and_print(growbuf* fields, size_t rownum, row_evaluator_args* args)
                         }
                     }
                 }
-                else if (c->column >= (fields->size / sizeof(void*))) {
+                else if (c->un1.column >= (fields->size / sizeof(void*))) {
                     //
                     // An out-of-bounds column is defined as empty string.
                     //
@@ -50,23 +50,23 @@ void eval_and_print(growbuf* fields, size_t rownum, row_evaluator_args* args)
                     print_csv_field("", output);
                 }
                 else {
-                    growbuf* field = ((growbuf**)(fields->buf))[c->column];
+                    growbuf* field = ((growbuf**)(fields->buf))[c->un1.column];
                     print_csv_field((char*)field->buf, output);
                 }
                 break;
 
             case SELECTOR_VALUE:
                 {
-                    val v = value_evaluate(&(c->value), fields, rownum);
+                    val v = value_evaluate(&(c->un1.value), fields, rownum);
                     
                     if (v.is_num) {
-                        fprintf(output, "%ld", v.num);
+                        fprintf(output, "%ld", v.un.num);
                     }
                     else if (v.is_dbl) {
-                        fprintf(output, "%lf", v.dbl);
+                        fprintf(output, "%lf", v.un.dbl);
                     }
                     else if (v.is_str) {
-                        print_csv_field(v.str, output);
+                        print_csv_field(v.un.str, output);
                     }
                     else {
                         fprintf(stderr, "Error: invalid value type!\n");
@@ -91,6 +91,7 @@ int csv_select(FILE* input, FILE* output, const char* query, size_t query_len)
     int retval = 0;
 
     growbuf* selectors = NULL;
+    growbuf* froms = NULL;
     compound* root_condition = NULL;
 
     selectors = growbuf_create(1);
@@ -99,8 +100,15 @@ int csv_select(FILE* input, FILE* output, const char* query, size_t query_len)
         retval = 2;
         goto cleanup;
     }
+    
+    froms = growbuf_create(1);
+    if(NULL == froms){
+       fprintf(stderr, "malloc failed\n");
+       retval = 2;
+       goto cleanup;
+    }
 
-    if (0 != queryparse(query, query_len, selectors, &root_condition))
+    if (0 != queryparse(query, query_len, selectors, &root_condition, froms))
     {
         retval = 1;
         goto cleanup;
