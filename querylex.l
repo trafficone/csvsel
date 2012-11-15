@@ -31,9 +31,14 @@ IDENTIFIER      [a-zA-Z_][a-zA-Z0-9_-]+
 
 ";"             { return TOK_END; }
 "select"        { return TOK_SELECT; }
+"SELECT"        { return TOK_SELECT; }
 "where"         { return TOK_WHERE; }
+"WHERE"         { return TOK_WHERE; }
 "contains"      { return TOK_CONTAINS; }
 "from"          { return TOK_FROM; }
+"FROM"          { return TOK_FROM; }
+"as"            { return TOK_AS; }
+"AS"            { return TOK_AS; }
 "="             { return TOK_EQ; }
 "!="            { return TOK_NEQ; }
 ">"             { return TOK_GT; }
@@ -47,6 +52,7 @@ IDENTIFIER      [a-zA-Z_][a-zA-Z0-9_-]+
 ")"             { return TOK_RPAREN; }
 "-"             { return TOK_DASH; }
 ","             { return TOK_COMMA; }
+"."             { return TOK_DOT; }
 
 ".int"          { return TOK_CONV_NUM; }
 ".float"        { return TOK_CONV_DBL; }

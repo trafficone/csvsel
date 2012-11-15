@@ -28,6 +28,7 @@ int main(int argc, char** argv)
 {
     int    retval          = EX_OK;
     FILE*  input           = stdin;
+    FILE*  header          = NULL;
     size_t query_arg_start = 1;
 
     growbuf* query = growbuf_create(32);
@@ -38,7 +39,7 @@ int main(int argc, char** argv)
     }
 
     if (argc == 1) {
-        fprintf(stderr, "usage: %s [-f inputfile] <query string>\n", argv[0]);
+        fprintf(stderr, "usage: %s [-f inputfile] [-h header_filename] <query string>\n", argv[0]);
         retval = EX_USAGE;
         goto cleanup;
     }
@@ -52,7 +53,7 @@ int main(int argc, char** argv)
         else if (strcmp(argv[i], "-f") == 0
                 || strcmp(argv[i], "--file") == 0) {
 
-            if (argc < 3) {
+            if (argc - i < 2) {
                 fprintf(stderr, "%s flag needs an argument\n", argv[i]);
                 retval = EX_USAGE;
                 goto cleanup;
@@ -78,6 +79,33 @@ int main(int argc, char** argv)
             query_arg_start = i + 2;
             i++;
         }
+        else if (strcmp(argv[i], "-h") == 0
+                || strcmp(argv[i], "--header") == 9){
+          if (argc - i < 2){ 
+            fprintf(stderr,"%s flag needs an argument\n", argv[i]);
+              retval = EX_USAGE;
+              goto cleanup;
+          }
+          if(0 != access(argv[i + 1], R_OK)) {
+                perror("unable to access header file");
+                retval = EX_NOINPUT;
+                goto cleanup;
+            }
+
+            if (header != NULL) {
+                fclose(header);
+            }
+
+            header = fopen(argv[i + 1], "r");
+            if (NULL == header) {
+                perror("opening header failed");
+                retval = EX_NOINPUT;
+                goto cleanup;
+            }
+            
+            query_arg_start = i + 2;
+            i++;
+        } 
         else {
             break;
         }
@@ -98,7 +126,7 @@ int main(int argc, char** argv)
 
     DEBUG printf("%s\n", (char*)query->buf);
 
-    switch (csv_select(input, stdout, query->buf, query->size)) {
+    switch (csv_select(input, stdout, query->buf, query->size, header)) {
         case 0:
             retval = EX_OK;
             break;

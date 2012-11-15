@@ -12,7 +12,7 @@ typedef struct {
 } row_evaluator_args;
 
 void eval_and_print(growbuf* fields, size_t rownum, row_evaluator_args* args);
-int csv_select(FILE* input, FILE* output, const char* query, size_t query_len);
+int csv_select(FILE* input, FILE* output, const char* query, size_t query_len, FILE* header);
 
 #endif //CSVSEL_H
 

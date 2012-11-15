@@ -11,18 +11,43 @@ Build Dependencies
 * GNU Bison
 * GCC with C99 support
 
+Usage
+-----
+
+csvsel [-f <filename>] [-h <filename> | -h0] <query>
+    Options:
+
+    * **`-f|--file`** <filename>    Specify the CSV File to read in (cannot be combined with FROM in query)
+
+    * **`-h|--header`** <filename>  Specify the header file if first line of file(s) is not a header line
+
+    * **`-h0`**                     Indicate that there is neither a header line nor a header file
+
+    The format of the header file is as follows:
+    <filename>,<column1>[.<type>],<column2>[.<type>],...  
+    It should be noted that the filename should include the full path.
+
 Query Language
 --------------
 
-    query: select [<selectors>] [where <conditions>]
+    query: select [<selectors>] [from filename [as] <alias>[, filename...]]  [where <conditions>]
 
-    selectors: [columns,values]
+    filename: /path/to/file.csv
+    
+    alias: string
+
+    selectors: [columns,values,columnnames]
 
     columns: column[, columns]      (plurality of columns)
     columns: column[ - columns]     (range of columns)
                                     (these can be mixed)
-
     column: %<digits>
+
+    columnnames: [filename/alias].colname [as] colalias  (requires header/header file)
+
+    colname: string
+
+    colalias: string
 
     conditions: [(] [not] <condition> [ (and|or) <conditions ] [)]
 

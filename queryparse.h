@@ -30,9 +30,16 @@ struct _func;
 
 typedef struct _fromval {
   char* alias;
-  char* from;
+  char* table;
+  FILE* fromfile;
 }fromval;
 
+typedef struct _columnname {
+  char* name;
+  char* alias;
+  char* table;
+  size_t col;
+}columnname;
 typedef union una {
         long          num;
         double        dbl;
@@ -83,9 +90,10 @@ typedef struct _selector {
     enum {
         SELECTOR_COLUMN, SELECTOR_VALUE
     } type;
+    char* table;
 } selector;
 
-int queryparse(const char* query, size_t query_length, growbuf* selected_columns, compound** root_condition, growbuf* froms);
+int queryparse(const char* query, size_t query_length, growbuf* selected_columns, compound** root_condition, growbuf* froms, growbuf* columnnames);
 
 void free_compound(compound* c);
 

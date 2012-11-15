@@ -18,6 +18,7 @@
 #include "queryeval.h"
 #include "util.h"
 #include "csvsel.h"
+#include "postprocess.h"
 
 #define DEBUG if (false)
 //#define DEBUG
@@ -86,12 +87,13 @@ void eval_and_print(growbuf* fields, size_t rownum, row_evaluator_args* args)
     }
 }
 
-int csv_select(FILE* input, FILE* output, const char* query, size_t query_len)
+int csv_select(FILE* input, FILE* output, const char* query, size_t query_len, FILE* header)
 {
     int retval = 0;
 
     growbuf* selectors = NULL;
     growbuf* froms = NULL;
+    growbuf* columnnames = NULL;
     compound* root_condition = NULL;
 
     selectors = growbuf_create(1);
@@ -108,9 +110,23 @@ int csv_select(FILE* input, FILE* output, const char* query, size_t query_len)
        goto cleanup;
     }
 
-    if (0 != queryparse(query, query_len, selectors, &root_condition, froms))
+    columnnames = growbuf_create(1);
+    if(NULL == columnnames){
+       fprintf(stderr, "malloc failed\n");
+       retval = 2;
+       goto cleanup;
+    }
+
+    //parse query into selectors (columns and constants), conditions, from files, and column names
+    if (0 != queryparse(query, query_len, selectors, &root_condition, froms, columnnames))
     {
         retval = 1;
+        goto cleanup;
+    }
+
+    //process query to turn files and column names into selectors which can be evaluated by eval_and_print
+    if (0 != querypostprocess(selectors,froms,columnnames,input,header)){
+        retval = 3;
         goto cleanup;
     }
 
@@ -120,8 +136,15 @@ int csv_select(FILE* input, FILE* output, const char* query, size_t query_len)
         print_condition(root_condition, 0);
     }
     
+    /*handling (implicit) joins:
+     *  Perform the queries on each of the intermediate files, making sure to include the join column(s).
+     *  A join condition is determined in the postprocessor as a special condition w/ two files.
+     *  Then perform the join using a final query which performs a search from (larger) file on (smaller) file
+     *  Normal full inner join logic is expected: all rows that pass the criteria are passed as a joined row
+     */
+
     row_evaluator_args args = { root_condition, selectors, output };
-    
+      
     if (0 != read_csv(input, (row_evaluator)&eval_and_print, (void*)&args)) {
         retval = EX_DATAERR;
     }

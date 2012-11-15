@@ -2,7 +2,7 @@ CFLAGS=-pedantic -std=gnu99 -O3 -D_GNU_SOURCE
 YFLAGS=-t -v
 LFLAGS=-d
 
-OBJS=csvsel.o growbuf.o csvformat.o queryeval.o queryparse.tab.o querylex.tab.o util.o functions.o
+OBJS=csvsel.o growbuf.o csvformat.o queryeval.o queryparse.tab.o querylex.tab.o util.o functions.o postprocess.o
 
 all: csvsel
 

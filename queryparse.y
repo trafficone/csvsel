@@ -19,6 +19,7 @@
 
 static growbuf* SELECTORS;
 static growbuf* FROMS;
+static growbuf* COLUMNNAMES;
 static compound** ROOT_CONDITION;
 
 extern int   query_debug;
@@ -31,12 +32,13 @@ static void query_error();
 
 extern functionspec FUNCTIONS[];
 
-int queryparse(const char* query, size_t query_length, growbuf* selectors, compound** root_condition, growbuf* froms)
+int queryparse(const char* query, size_t query_length, growbuf* selectors, compound** root_condition, growbuf* froms, growbuf* columnnames)
 {
     int fd[2];
 
     SELECTORS = selectors;
     FROMS = froms;
+    COLUMNNAMES = columnnames;
     ROOT_CONDITION = root_condition;
 
     //
@@ -194,10 +196,10 @@ bool column_selected(growbuf* selectors, size_t column)
     return false;
 }
 
-bool in_froms(growbuf* froms, size_t from){
+bool in_froms(growbuf* froms, char* from){
     for (size_t i = 0; i < froms->size / sizeof(void*); i++){
         fromval* f = ((fromval**)(froms->buf))[i];
-        if(f->from == from){
+        if(strcmp(f->table, from)==0){
            return true;
         } 
     } 
@@ -219,7 +221,7 @@ bool in_froms(growbuf* froms, size_t from){
     condition     simple;
 }
 
-%token TOK_SELECT TOK_WHERE TOK_CONTAINS TOK_EQ TOK_NEQ TOK_GT TOK_LT TOK_GTE TOK_LTE TOK_AND TOK_OR TOK_NOT TOK_LPAREN TOK_RPAREN TOK_COMMA TOK_DASH TOK_CONV_NUM TOK_CONV_DBL TOK_CONV_STR TOK_ERROR TOK_END TOK_FROM
+%token TOK_SELECT TOK_WHERE TOK_CONTAINS TOK_EQ TOK_NEQ TOK_GT TOK_LT TOK_GTE TOK_LTE TOK_AND TOK_OR TOK_NOT TOK_LPAREN TOK_RPAREN TOK_COMMA TOK_DASH TOK_CONV_NUM TOK_CONV_DBL TOK_CONV_STR TOK_ERROR TOK_END TOK_FROM TOK_AS TOK_DOT
 
 %token <num> TOK_INTEGER
 %token <dbl> TOK_FLOAT
@@ -258,19 +260,27 @@ From
 ;
 
 Fromval
-    : TOK_IDENTIFIER TOK_IDENTIFIER {
-      if(!in_from(FROMS,$1){
+     : TOK_IDENTIFIER TOK_IDENTIFIER {
+      if(!in_froms(FROMS,$1)){
         fromval* f = (fromval*)malloc(sizeof(fromval));
         f->alias = $2;
-        f->from  = $1;
+        f->table  = $1;
+        growbuf_append(FROMS,&f,sizeof(void*));
+      }
+    }
+    | TOK_IDENTIFIER TOK_AS TOK_IDENTIFIER {
+      if(!in_froms(FROMS,$1)){
+        fromval* f = (fromval*)malloc(sizeof(fromval));
+        f->alias = $3;
+        f->table  = $1;
         growbuf_append(FROMS,&f,sizeof(void*));
       }
     }
     | TOK_IDENTIFIER {
-      if(!in_from(FROMS,$1){
+      if(!in_froms(FROMS,$1)){
         fromval* f = (fromval*)malloc(sizeof(fromval));
         f->alias = $1;
-        f->from  = $1;
+        f->table  = $1;
         growbuf_append(FROMS,&f,sizeof(void*));
       }
     }
@@ -284,12 +294,56 @@ Selectors
 
 Selector
     : Columnspec
+    | Columnname
     | Value {
         selector* s = (selector*)malloc(sizeof(selector));
         s->type = SELECTOR_VALUE;
         s->un1.value = $1;
         growbuf_append(SELECTORS, &s, sizeof(void*));
     }
+;
+
+Columnname
+     : TOK_IDENTIFIER{
+         columnname* c = (columnname*)malloc(sizeof(columnname));
+         c->name = $1;
+         c->alias = $1;
+         growbuf_append(COLUMNNAMES, &c, sizeof(void*));
+     }
+     | TOK_IDENTIFIER TOK_IDENTIFIER {
+         columnname* c = (columnname*)malloc(sizeof(columnname));
+         c->name = $1;
+         c->alias = $2;
+         growbuf_append(COLUMNNAMES, &c, sizeof(void*));
+     }
+     | TOK_IDENTIFIER TOK_AS TOK_IDENTIFIER {
+         columnname* c = (columnname*)malloc(sizeof(columnname));
+         c->name = $1;
+         c->alias = $3;
+         growbuf_append(COLUMNNAMES, &c, sizeof(void*));
+     }
+     | TOK_IDENTIFIER TOK_DOT TOK_IDENTIFIER {
+         columnname* c = (columnname*)malloc(sizeof(columnname));
+         c->name = $3;
+         c->alias = $3;
+         c->table = $1;
+         growbuf_append(COLUMNNAMES, &c, sizeof(void*));
+
+     }
+     | TOK_IDENTIFIER TOK_DOT TOK_IDENTIFIER TOK_AS TOK_IDENTIFIER {
+         columnname* c = (columnname*)malloc(sizeof(columnname));
+         c->name = $3;
+         c->alias = $5;
+         c->table = $1;
+         growbuf_append(COLUMNNAMES, &c, sizeof(void*));
+     }
+     | TOK_IDENTIFIER TOK_DOT TOK_IDENTIFIER TOK_IDENTIFIER {
+         columnname* c = (columnname*)malloc(sizeof(columnname));
+         c->name = $3;
+         c->alias = $4;
+         c->table = $1;
+         growbuf_append(COLUMNNAMES, &c, sizeof(void*));
+     }
 ;
 
 Columnspec
